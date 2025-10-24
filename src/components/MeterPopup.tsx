@@ -33,7 +33,12 @@ export const MeterPopup: React.FC<MeterPopupProps> = ({ meter, position }) => {
         transform: 'translate(-50%, -100%)'
       }}
     >
-      <div className="bg-card border border-border rounded-xl shadow-lg px-4 py-3 min-w-[240px]">
+      <div 
+        className="bg-card/95 backdrop-blur-md border border-border rounded-xl shadow-2xl px-4 py-3 min-w-[240px] ring-1 ring-black/5"
+        style={{
+          boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05)'
+        }}
+      >
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-medium text-muted-foreground">
             {meter.id}

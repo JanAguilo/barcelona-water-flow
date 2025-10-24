@@ -100,51 +100,133 @@ export const WaterMeterMap: React.FC<WaterMeterMapProps> = ({
     
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/light-v11',
+      style: 'mapbox://styles/mapbox/dark-v11', // Modern dark style
       center: [2.1734, 41.3851], // Barcelona coordinates
-      zoom: 12,
-      pitch: 0,
+      zoom: 12.5,
+      pitch: 45, // Add 3D perspective
+      bearing: 0,
+      antialias: true, // Smooth edges
+      // Smooth animation settings
+      fadeDuration: 300,
+      crossSourceCollisions: true,
+      // Interaction settings for smooth feel
+      touchZoomRotate: true,
+      touchPitch: true,
+      dragRotate: true,
+      keyboard: true,
+      doubleClickZoom: true,
+      scrollZoom: true,
+      boxZoom: true,
+      dragPan: true,
+      // Performance optimizations
+      preserveDrawingBuffer: false,
+      refreshExpiredTiles: true,
+      trackResize: true,
     });
 
-    // Add navigation controls (zoom in/out)
+    // Configure smooth transitions and interactions
+    map.current.on('load', () => {
+      // Enable smooth zoom and pan with custom easing
+      if (map.current) {
+        const mapInstance = map.current;
+        
+        // Override default easing for smoother transitions
+        const smoothEasing = (t: number) => {
+          // Custom cubic-bezier easing for smooth feel
+          return t < 0.5 
+            ? 4 * t * t * t 
+            : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1;
+        };
+        
+        // Make all map movements smoother
+        mapInstance.on('movestart', () => {
+          const canvas = mapInstance.getCanvas();
+          canvas.style.cursor = 'grabbing';
+        });
+        
+        mapInstance.on('moveend', () => {
+          const canvas = mapInstance.getCanvas();
+          canvas.style.cursor = 'grab';
+        });
+        
+        // Set default cursor
+        const canvas = mapInstance.getCanvas();
+        canvas.style.cursor = 'grab';
+      }
+    });
+
+    // Add navigation controls with pitch visualization
     map.current.addControl(
       new mapboxgl.NavigationControl({
-        visualizePitch: false,
+        visualizePitch: true,
+        showCompass: true,
+        showZoom: true,
       }),
       'top-right'
     );
+
+    // Add scale control for reference
+    map.current.addControl(
+      new mapboxgl.ScaleControl({
+        maxWidth: 100,
+        unit: 'metric'
+      }),
+      'bottom-right'
+    );
+
+    // Enable smooth zoom with mouse wheel
+    map.current.scrollZoom.setWheelZoomRate(1/200); // Smoother zoom
 
     // Add water meter markers once map is loaded
     map.current.on('load', () => {
       meters.forEach((meter, index) => {
         const color = meter.status === 'alert' 
-          ? 'hsl(0, 75%, 58%)' 
+          ? '#ef4444' // Vibrant red
           : meter.status === 'warning'
-          ? 'hsl(35, 95%, 60%)'
-          : 'hsl(205, 85%, 45%)';
+          ? '#f59e0b' // Vibrant orange
+          : '#3b82f6'; // Vibrant blue
 
-        // Create custom marker element
+        // Create custom marker element with better sizing
         const el = document.createElement('div');
-        el.className = 'cursor-pointer transition-all duration-300 hover:z-50';
-        el.style.width = '6px';
-        el.style.height = '6px';
-        el.style.animationDelay = `${index * 0.001}s`;
+        el.className = 'cursor-pointer transition-all duration-500 hover:z-50';
+        el.style.width = '20px';
+        el.style.height = '20px';
+        el.style.animationDelay = `${index * 0.0005}s`;
         
         const dot = document.createElement('div');
-        dot.className = 'w-1.5 h-1.5 rounded-full border border-white shadow-sm animate-dot-appear hover:scale-[2.5] transition-transform';
+        dot.className = 'w-2.5 h-2.5 rounded-full border-2 border-white/90 shadow-lg animate-dot-appear hover:scale-[2] transition-all duration-300';
         dot.style.backgroundColor = color;
+        dot.style.boxShadow = `0 0 12px ${color}40, 0 2px 8px rgba(0,0,0,0.3)`;
+        dot.style.position = 'absolute';
+        dot.style.top = '50%';
+        dot.style.left = '50%';
+        dot.style.transform = 'translate(-50%, -50%)';
+
+        // Add glow effect for alerts and warnings
+        if (meter.status === 'alert' || meter.status === 'warning') {
+          const glow = document.createElement('div');
+          glow.className = 'absolute inset-0 rounded-full';
+          glow.style.width = '100%';
+          glow.style.height = '100%';
+          glow.style.backgroundColor = color;
+          glow.style.opacity = '0.3';
+          glow.style.filter = 'blur(4px)';
+          glow.style.animation = 'pulse 2s ease-in-out infinite';
+          dot.appendChild(glow);
+        }
 
         // Add ripple effect for alerts
         if (simulateAlert && meter.status === 'alert') {
           const ripple = document.createElement('div');
-          ripple.className = 'absolute inset-0 rounded-full border animate-ripple';
+          ripple.className = 'absolute rounded-full border-2 animate-ripple';
           ripple.style.borderColor = color;
-          ripple.style.width = '18px';
-          ripple.style.height = '18px';
+          ripple.style.width = '32px';
+          ripple.style.height = '32px';
           ripple.style.top = '50%';
           ripple.style.left = '50%';
           ripple.style.transform = 'translate(-50%, -50%)';
-          dot.appendChild(ripple);
+          ripple.style.opacity = '0.7';
+          el.appendChild(ripple);
         }
 
         el.appendChild(dot);
@@ -189,7 +271,18 @@ export const WaterMeterMap: React.FC<WaterMeterMapProps> = ({
     <div className="relative w-full h-full">
       <div 
         ref={mapContainer} 
-        className="absolute inset-0 rounded-2xl overflow-hidden"
+        className="absolute inset-0 rounded-2xl overflow-hidden shadow-2xl border border-border/50 ring-1 ring-black/5"
+        style={{
+          boxShadow: '0 20px 60px -15px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 0, 0, 0.05)'
+        }}
+      />
+      
+      {/* Subtle vignette overlay for depth */}
+      <div 
+        className="absolute inset-0 pointer-events-none rounded-2xl"
+        style={{
+          background: 'radial-gradient(circle at center, transparent 0%, transparent 60%, rgba(0, 0, 0, 0.15) 100%)'
+        }}
       />
       
       {/* Hover Popup */}
